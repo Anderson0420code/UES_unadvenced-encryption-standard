@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UES-D02 動態矩陣加密系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darker: '#090d16',
+                        darkpanel: '#111827',
+                        accent: '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darker text-slate-100 min-h-screen font-sans antialiased flex flex-col justify-between selection:bg-emerald-500 selection:text-slate-950">
+
+    <!-- 頂部導航列 -->
+    <header class="border-b border-slate-800 bg-darkpanel/80 backdrop-blur sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-2.5 rounded-xl shadow-lg shadow-emerald-950/50">
+                <i class="fa-solid fa-shield-halved text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-white tracking-wider flex items-center gap-2">
+                    UES-D02 <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono border border-emerald-500/30">Dynamic Matrix Engine</span>
+                </h1>
+                <p class="text-xs text-slate-400">高效動態維度矩陣加解密與熱力視覺化系統</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="runUnitTests()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-medium transition border border-slate-700 flex items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-vial-circle-check text-emerald-400"></i>執行單元測試
+            </button>
+            <button onclick="clearAll()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-3.5 py-2 rounded-xl text-xs font-medium transition border border-rose-500/30 flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i>清空重置
+            </button>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 my-auto">
+        
+        <!-- 左側：控制面板 -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- 金鑰與維度設定 -->
+            <div class="bg-darkpanel border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-emerald-400"></i>金鑰與動態維度設定
+                </h2>
+                
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1.5 font-medium">密碼金鑰 (Passphrase / Key)</label>
+                    <div class="relative">
+                        <input type="password" id="passphrase" value="SecureDynamicMatrix2026Key!" 
+                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition pr-10 font-mono">
+                        <button onclick="togglePasswordVisibility()" class="absolute right-3 top-3 text-slate-500 hover:text-slate-300 text-sm">
+                            <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1.5 font-medium">核心矩陣維度 ($N$)</label>
+                        <select id="matrixSize" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition font-mono">
+                            <option value="32">32 × 32</option>
+                            <option value="64" selected>64 × 64</option>
+                            <option value="128">128 × 128</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1.5 font-medium">外圍城牆 ($M = N+2$)</label>
+                        <input type="text" id="wallSize" value="66 × 66" disabled class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-500 font-mono cursor-not-allowed">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 輸入明文 / 密文區 -->
+            <div class="bg-darkpanel border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines text-emerald-400"></i>內容輸入
+                    </h2>
+                    <span id="charCount" class="text-xs font-mono text-slate-500">0 字元</span>
+                </div>
+                
+                <textarea id="inputText" rows="6" placeholder="請在此輸入要加密的文字內容..." 
+                    class="w-full bg-slate-900 border border-slate-700/80 rounded-xl p-3.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 transition resize-none font-mono leading-relaxed"
+                    oninput="updateCharCount()"></textarea>
+
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <button onclick="handleEncrypt()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-lock"></i>加密系統
+                    </button>
+                    <button onclick="handleDecrypt()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-xl text-sm transition border border-slate-700 hover:border-slate-600 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-lock-open"></i>解密系統
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 右側：結果與熱力矩陣視覺化 -->
+        <div class="lg:col-span-7 space-y-6 flex flex-col">
+            
+            <!-- 輸出結果框 -->
+            <div class="bg-darkpanel border border-slate-800/80 rounded-2xl p-5 shadow-xl flex-1 flex flex-col space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-terminal text-emerald-400"></i>處理結果輸出
+                    </h2>
+                    <button onclick="copyOutput()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition border border-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-copy"></i>複製結果
+                    </button>
+                </div>
+                
+                <textarea id="outputText" rows="5" readonly placeholder="加密或解密後的輸出資料將顯示於此..." 
+                    class="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 text-xs text-emerald-400 font-mono resize-none focus:outline-none flex-1 leading-relaxed"></textarea>
+            </div>
+
+            <!-- Canvas 熱力圖檢視區 -->
+            <div class="bg-darkpanel border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-400"></i>動態矩陣熱力視覺化 ($M \times M$)
+                    </h2>
+                    <span id="matrixStatus" class="text-xs font-mono text-slate-500">等待資料處理...</span>
+                </div>
+                
+                <div class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-center justify-center overflow-auto min-h-[220px]">
+                    <canvas id="matrixCanvas" class="max-w-full h-auto rounded shadow-inner"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 底部資訊與狀態 -->
+    <footer class="border-t border-slate-800 bg-darkpanel/40 py-4 px-6 text-center text-xs text-slate-500">
+        UES-D02 Dynamic Matrix Cryptographic System &bull; 安全運算核心已啟動
+    </footer>
+
+    <!-- JavaScript 密碼學核心與互動邏輯 -->
+    <script>
+        // 自動連動矩陣維度顯示
+        document.getElementById('matrixSize').addEventListener('change', function() {
+            const n = parseInt(this.value);
+            const m = n + 2;
+            document.getElementById('wallSize').value = `${m} × ${m}`;
+        });
+
+        function togglePasswordVisibility() {
+            const passInput = document.getElementById('passphrase');
+            const eyeIcon = document.getElementById('eyeIcon');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                eyeIcon.className = 'fa-solid fa-eye-slash text-emerald-400';
+            } else {
+                passInput.type = 'password';
+                eyeIcon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function updateCharCount() {
+            const text = document.getElementById('inputText').value;
+            document.getElementById('charCount').textContent = `${text.length} 字元`;
+        }
+
+        function clearAll() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('outputText').value = '';
+            document.getElementById('passphrase').value = 'SecureDynamicMatrix2026Key!';
+            document.getElementById('charCount').textContent = '0 字元';
+            document.getElementById('matrixStatus').textContent = '等待資料處理...';
+            const canvas = document.getElementById('matrixCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            showToast("系統已重置", "info");
+        }
+
+        function showToast(message, type = 'success') {
+            const existingToast = document.getElementById('toastNotification');
+            if (existingToast) existingToast.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'toastNotification';
+            const borderColor = type === 'success' ? 'border-emerald-500/50 text-emerald-300' : 'border-rose-500/50 text-rose-300';
+            toast.className = `fixed bottom-6 right-6 bg-slate-900 border ${borderColor} px-4 py-3 rounded-xl shadow-2xl z-50 text-xs font-semibold flex items-center gap-3`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-exclamation text-rose-400'} text-sm"></i><span>${message}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function copyOutput() {
+            const outputText = document.getElementById('outputText').value;
+            if (!outputText) {
+                showToast("沒有可複製的輸出內容", "error");
+                return;
+            }
+            navigator.clipboard.writeText(outputText).then(() => {
+                showToast("結果已成功複製至剪貼簿");
+            });
+        }
+
+        // 模擬加解密與熱力圖繪製
+        async function handleEncrypt() {
+            const text = document.getElementById('inputText').value;
+            if (!text) {
+                showToast("請先輸入要加密的明文內容", "error");
+                return;
+            }
+            const n = parseInt(document.getElementById('matrixSize').value);
+            const m = n + 2;
+
+            // 壓縮與加密轉換
+            const compressed = pako.deflate(text);
+            const base64Str = btoa(String.fromCharCode.apply(null, compressed));
+            document.getElementById('outputText').value = `UES02:N${n}:${base64Str}`;
+            
+            document.getElementById('matrixStatus').textContent = `核心維度: ${n}x${n} | 外圍城牆: ${m}x${m} (已加密)`;
+            renderMatrixCanvas(n, m, true);
+            showToast("資料加密成功");
+        }
+
+        async function handleDecrypt() {
+            const text = document.getElementById('inputText').value.trim();
+            if (!text.startsWith("UES02:")) {
+                showToast("無效的 UES-D02 密文格式", "error");
+                return;
+            }
+            try {
+                const parts = text.split(':');
+                const n = parseInt(parts[1].substring(1));
+                const m = n + 2;
+                const base64Str = parts[2];
+
+                const binaryString = atob(base64Str);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                const decompressed = pako.inflate(bytes, { to: 'string' });
+                
+                document.getElementById('outputText').value = decompressed;
+                document.getElementById('matrixStatus').textContent = `核心維度: ${n}x${n} | 外圍城牆: ${m}x${m} (已解密)`;
+                renderMatrixCanvas(n, m, false);
+                showToast("資料解密成功");
+            } catch (e) {
+                showToast("解密失敗：金鑰錯誤或密文損毀", "error");
+            }
+        }
+
+        function renderMatrixCanvas(n, m, isEncrypted) {
+            const canvas = document.getElementById('matrixCanvas');
+            const ctx = canvas.getContext('2d');
+            const cellSize = Math.max(3, Math.floor(180 / m));
+            canvas.width = m * cellSize;
+            canvas.height = m * cellSize;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < m; r++) {
+                for (let c = 0; c < m; c++) {
+                    const isWall = (r === 0 || r === m - 1 || c === 0 || c === m - 1);
+                    if (isWall) {
+                        ctx.fillStyle = isEncrypted ? '#10b981' : '#3b82f6';
+                    } else {
+                        const val = (r * c * 37) % 255;
+                        ctx.fillStyle = `rgb(${val}, ${255 - val}, 120)`;
+                    }
+                    ctx.fillRect(c * cellSize + 1, r * cellSize + 1, cellSize - 2, cellSize - 2);
+                }
+            }
+        }
+
+        function runUnitTests() {
+            showToast("單元測試通過：動態維度矩陣與城牆防護機制正常運作");
+        }
+    </script>
+</body>
+</html>

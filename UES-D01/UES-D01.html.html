@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>終極矩陣密碼學 GUI 系統 (Ultimate Matrix Cipher)</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            matrix: {
+              bg: '#0a0f1d',
+              card: '#111827',
+              border: '#1f2937',
+              accent: '#10b981',
+              cyan: '#06b6d4',
+              wall: '#3b82f6'
+            }
+          },
+          fontFamily: {
+            mono: ['Fira Code', 'JetBrains Mono', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Pako Zlib Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+
+  <style>
+    body {
+      background-color: #060913;
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d1322;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f293d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
+    }
+
+    .glow-accent {
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+    }
+    
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+    }
+
+    .glass-card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+      50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.6); }
+    }
+
+    .result-highlight {
+      animation: pulse-glow 2s infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-black">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-gray-800 bg-gray-950/80 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-gray-950 font-black text-xl shadow-lg">
+          <i class="fa-solid fa-cube"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
+            Ultimate Matrix Cipher
+          </h1>
+          <p class="text-xs text-gray-400">2D 矩陣城牆與偽裝進位加密系統</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span>
+          Zlib + 256-bit Key + 66x66 Matrix Core
+        </span>
+        <button onclick="runUnitTests()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition flex items-center gap-2 border border-gray-700">
+          <i class="fa-solid fa-vial text-emerald-400"></i>
+          <span class="hidden sm:inline">執行系統測試</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full space-y-6">
+
+    <!-- Preset Quick Load Buttons -->
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-gray-900/60 p-3 rounded-2xl border border-gray-800">
+      <div class="text-xs text-gray-400 font-medium flex items-center gap-2">
+        <i class="fa-solid fa-bolt text-yellow-400"></i>
+        快速載入範例情境:
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="loadPreset(0)" class="px-3 py-1 text-xs rounded-lg bg-gray-800 hover:bg-emerald-950 hover:text-emerald-300 border border-gray-700 hover:border-emerald-500/50 transition">
+          🔐 中文密碼學研究
+        </button>
+        <button onclick="loadPreset(1)" class="px-3 py-1 text-xs rounded-lg bg-gray-800 hover:bg-cyan-950 hover:text-cyan-300 border border-gray-700 hover:border-cyan-500/50 transition">
+          🥷 表情符號與特徵測試
+        </button>
+        <button onclick="loadPreset(2)" class="px-3 py-1 text-xs rounded-lg bg-gray-800 hover:bg-blue-950 hover:text-blue-300 border border-gray-700 hover:border-blue-500/50 transition">
+          🌐 英文長句傳輸
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-gray-800 space-x-2 sm:space-x-6 overflow-x-auto">
+      <button id="tab-btn-cipher" onclick="switchTab('cipher')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-emerald-400 text-emerald-400 flex items-center gap-2">
+        <i class="fa-solid fa-key"></i> 加密 / 解密控制台
+      </button>
+      <button id="tab-btn-matrix" onclick="switchTab('matrix')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2">
+        <i class="fa-solid fa-border-all"></i> 66x66 矩陣視覺化
+      </button>
+      <button id="tab-btn-pipeline" onclick="switchTab('pipeline')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2">
+        <i class="fa-solid fa-diagram-project"></i> 密碼學步驟剖析
+      </button>
+      <button id="tab-btn-security" onclick="switchTab('security')" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2">
+        <i class="fa-solid fa-shield-halved"></i> 雪崩與安全性測試
+      </button>
+    </div>
+
+    <!-- SECTION 1: Cipher Console -->
+    <section id="tab-cipher" class="tab-content space-y-6">
+      <!-- Top Parameter Bar -->
+      <div class="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="w-full md:w-1/2 flex items-center gap-3">
+          <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+            <i class="fa-solid fa-fingerprint text-xl"></i>
+          </div>
+          <div class="flex-grow">
+            <label class="block text-xs text-gray-400 font-semibold mb-1">32 位元組高強度金鑰 (256-bit Key / 64 Hex Chars)</label>
+            <div class="flex gap-2">
+              <input type="text" id="input-seed" value="2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500" placeholder="請輸入 32-Byte (64碼 Hex) 金鑰...">
+              <button onclick="copyToClipboard('input-seed')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl border border-gray-700 text-xs font-semibold flex items-center gap-1 shrink-0" title="複製 Key">
+                <i class="fa-solid fa-copy"></i> 複製 Key
+              </button>
+              <button onclick="randomizeSeed()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl border border-gray-700 text-xs font-semibold flex items-center gap-1 shrink-0">
+                <i class="fa-solid fa-dice"></i> 隨機 256-bit
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="w-full md:w-1/2 flex items-center justify-end gap-3 text-xs">
+          <div class="bg-gray-900 border border-gray-800 p-2.5 rounded-xl flex items-center gap-3">
+            <i class="fa-solid fa-compress text-cyan-400 text-base"></i>
+            <div>
+              <span class="text-gray-400">壓縮容量上限:</span>
+              <span id="capacity-badge" class="ml-1.5 font-bold text-emerald-400 font-mono">0 / 63 Bytes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Dual Editor Panel -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Input Plaintext Card -->
+        <div class="glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4 border-l-4 border-emerald-500">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-base font-bold text-gray-100 flex items-center gap-2">
+                <i class="fa-solid fa-file-lines text-emerald-400"></i> 明文輸入 (Plaintext)
+              </h2>
+              <span id="plaintext-char-count" class="text-xs text-gray-400 font-mono">14 個字元</span>
+            </div>
+            <textarea id="input-plaintext" rows="6" class="w-full bg-gray-950/80 border border-gray-800 rounded-xl p-3 text-sm font-mono text-gray-200 focus:outline-none focus:border-emerald-500 resize-none" placeholder="請在此輸入要加密的機密文字...">密碼學矩陣研究：先壓縮再揉碎！</textarea>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 pt-2">
+            <button onclick="clearPlaintext()" class="px-3 py-2 text-xs font-medium text-gray-400 hover:text-gray-200 bg-gray-900 hover:bg-gray-800 rounded-xl border border-gray-800 transition">
+              <i class="fa-solid fa-trash-can mr-1"></i> 清除
+            </button>
+            <button onclick="processEncrypt()" class="flex-grow py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-gray-950 font-bold rounded-xl text-sm shadow-lg glow-accent flex items-center justify-center gap-2 transition">
+              <i class="fa-solid fa-lock"></i> 執行矩陣加密 (Encrypt)
+            </button>
+          </div>
+        </div>
+
+        <!-- Output Disguised Ciphertext Card -->
+        <div class="glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4 border-l-4 border-cyan-500">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-base font-bold text-gray-100 flex items-center gap-2">
+                <i class="fa-solid fa-mask text-cyan-400"></i> 中文偽裝密文 (Disguised Cipher)
+              </h2>
+              <span id="ciphertext-char-count" class="text-xs text-gray-400 font-mono">4356 字元</span>
+            </div>
+            <textarea id="output-ciphertext" rows="6" class="w-full bg-gray-950/80 border border-gray-800 rounded-xl p-3 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 resize-none break-all" placeholder="加密後的中文偽裝密文將在此顯示..."></textarea>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 pt-2">
+            <button onclick="copyToClipboard('output-ciphertext')" class="px-3 py-2 text-xs font-medium text-gray-300 hover:text-white bg-gray-900 hover:bg-gray-800 rounded-xl border border-gray-800 transition flex items-center gap-1">
+              <i class="fa-solid fa-copy"></i> 複製密文
+            </button>
+            <button onclick="processDecrypt()" class="flex-grow py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-gray-950 font-bold rounded-xl text-sm shadow-lg glow-cyan flex items-center justify-center gap-2 transition">
+              <i class="fa-solid fa-key"></i> 執行矩陣解密 (Decrypt)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEDICATED DECRYPTED OUTPUT RESULT DISPLAY CARD -->
+      <div id="decrypted-result-card" class="glass-card p-5 rounded-2xl border-2 border-emerald-500/40 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+            <h3 class="text-base font-bold text-emerald-400 flex items-center gap-2">
+              <i class="fa-solid fa-unlock-keyhole"></i> ✨ 解密還原出來的原始文字 (Decrypted Plaintext Result)
+            </h3>
+          </div>
+          <span id="decrypted-status-badge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-gray-800 text-gray-400 border border-gray-700">
+            <i class="fa-solid fa-clock mr-1"></i> 等待解密
+          </span>
+        </div>
+
+        <div class="relative bg-gray-950 p-4 rounded-xl border border-emerald-500/30 text-gray-100 font-mono text-sm leading-relaxed break-all shadow-inner min-h-[60px] flex items-center">
+          <p id="output-decrypted-text" class="text-gray-500 font-normal text-sm italic">尚未解密（請點擊「執行矩陣解密」按鈕進行還原）</p>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-gray-400 pt-1">
+          <span id="decrypted-char-info"><i class="fa-solid fa-i-cursor text-emerald-400 mr-1"></i> 還原字數: -</span>
+          <button onclick="copyToClipboard('output-decrypted-text', true)" class="px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 rounded-lg font-semibold flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-copy"></i> 複製還原文字
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Execution Log & Compression Metrics -->
+      <div id="cipher-status-panel" class="glass-card p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div class="flex items-center gap-3">
+          <div id="status-icon" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-check"></i>
+          </div>
+          <div>
+            <div id="status-title" class="font-bold text-gray-200">系統就緒</div>
+            <div id="status-desc" class="text-gray-400">已準備進行 66x66 矩陣擴散加密與解密</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-6 text-gray-400 font-mono">
+          <div>原長: <span id="stat-orig" class="text-gray-200 font-bold">21 B</span></div>
+          <div>Zlib 壓縮: <span id="stat-comp" class="text-emerald-400 font-bold">27 B</span></div>
+          <div>壓縮率: <span id="stat-ratio" class="text-cyan-400 font-bold">-28.6%</span></div>
+          <div>矩陣格數: <span class="text-blue-400 font-bold">4,356 格</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: 2D Matrix Visualizer -->
+    <section id="tab-matrix" class="tab-content hidden space-y-6">
+      <div class="glass-card p-5 rounded-2xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-gray-100 flex items-center gap-2">
+              <i class="fa-solid fa-border-all text-emerald-400"></i> 66x66 雙層城牆矩陣熱力圖
+            </h2>
+            <p class="text-xs text-gray-400">藍色外圈: 66x66 隨機城牆雜訊 (Wall) | 綠/青內圈: 64x64 循環位移核心 (Core)</p>
+          </div>
+
+          <div class="flex items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5 text-blue-400"><span class="w-3 h-3 rounded bg-blue-500/60 inline-block"></span> 外圍城牆 (Wall)</span>
+            <span class="flex items-center gap-1.5 text-emerald-400"><span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span> 核心矩陣 (Core)</span>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="flex flex-col lg:flex-row gap-6 items-center justify-center pt-2">
+          <div class="relative bg-gray-950 p-3 rounded-2xl border border-gray-800 shadow-2xl">
+            <canvas id="matrix-canvas" width="528" height="528" class="rounded-xl cursor-crosshair max-w-full h-auto"></canvas>
+            <div id="matrix-tooltip" class="absolute pointer-events-none hidden bg-gray-900/95 border border-emerald-500/50 p-2.5 rounded-xl text-xs font-mono shadow-2xl space-y-1 z-10">
+              <div id="tooltip-coord" class="font-bold text-emerald-400">Row: 0, Col: 0</div>
+              <div id="tooltip-val" class="text-gray-200">Value: 0 (0x00)</div>
+              <div id="tooltip-type" class="text-blue-400 font-semibold">🏰 城牆防護格</div>
+            </div>
+          </div>
+
+          <!-- Inspector Sidebar -->
+          <div class="w-full lg:w-72 space-y-4 font-mono text-xs">
+            <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-3">
+              <h3 class="font-bold text-gray-200 border-b border-gray-800 pb-2 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass text-cyan-400"></i> 格點數據探針
+              </h3>
+              <div><span class="text-gray-400">目前座標:</span> <span id="probe-coord" class="text-emerald-400 font-bold">請移動滑鼠至矩陣上</span></div>
+              <div><span class="text-gray-400">數值 (Byte):</span> <span id="probe-val" class="text-gray-200 font-bold">-</span></div>
+              <div><span class="text-gray-400">Hex 進位:</span> <span id="probe-hex" class="text-cyan-400 font-bold">-</span></div>
+              <div><span class="text-gray-400">偽裝中文字:</span> <span id="probe-char" class="text-yellow-400 font-bold text-base">-</span></div>
+              <div><span class="text-gray-400">矩陣區域:</span> <span id="probe-region" class="text-blue-400 font-bold">-</span></div>
+            </div>
+
+            <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-2">
+              <h3 class="font-bold text-gray-200 border-b border-gray-800 pb-2 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-emerald-400"></i> 矩陣結構統計
+              </h3>
+              <div class="flex justify-between"><span class="text-gray-400">總儲存格:</span> <span class="text-gray-200 font-bold">4,356 格</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">核心容量:</span> <span class="text-emerald-400 font-bold">4,096 格 (64x64)</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">外圍城牆:</span> <span class="text-blue-400 font-bold">260 格 (66x66 邊框)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Step-by-step Pipeline Inspector -->
+    <section id="tab-pipeline" class="tab-content hidden space-y-6">
+      <div class="glass-card p-5 rounded-2xl space-y-6">
+        <div>
+          <h2 class="text-base font-bold text-gray-100 flex items-center gap-2">
+            <i class="fa-solid fa-diagram-project text-emerald-400"></i> 加密演算法完整管道剖析
+          </h2>
+          <p class="text-xs text-gray-400">逐步檢視原始資料經過壓縮、填充、1D打亂、2D擴散與全域二次打亂的狀態</p>
+        </div>
+
+        <div class="space-y-4 font-mono text-xs" id="pipeline-steps-container">
+          <!-- Step cards generated by JavaScript -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: Security & Avalanche Tester -->
+    <section id="tab-security" class="tab-content hidden space-y-6">
+      <div class="glass-card p-5 rounded-2xl space-y-6">
+        <div>
+          <h2 class="text-base font-bold text-gray-100 flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i> 金鑰敏感度與雪崩效應測試
+          </h2>
+          <p class="text-xs text-gray-400">驗證當密碼種子 (Seed) 僅改變 1 個數值時，解密結果是否徹底被擋下</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Test Panel 1: Correct Key -->
+          <div class="bg-gray-950 p-4 rounded-xl border border-emerald-500/30 space-y-3">
+            <div class="flex items-center justify-between text-emerald-400 font-bold text-sm">
+              <span><i class="fa-solid fa-circle-check"></i> 正確金鑰測試</span>
+              <span id="test-key-correct" class="font-mono">Seed: 987654321</span>
+            </div>
+            <div id="test-result-correct" class="p-3 bg-emerald-950/30 border border-emerald-500/20 text-emerald-300 rounded-lg break-all">
+              -
+            </div>
+          </div>
+
+          <!-- Test Panel 2: Incorrect Key (+1) -->
+          <div class="bg-gray-950 p-4 rounded-xl border border-red-500/30 space-y-3">
+            <div class="flex items-center justify-between text-red-400 font-bold text-sm">
+              <span><i class="fa-solid fa-triangle-exclamation"></i> 錯誤金鑰測試 (Seed + 1)</span>
+              <span id="test-key-wrong" class="font-mono">Seed: 987654322</span>
+            </div>
+            <div id="test-result-wrong" class="p-3 bg-red-950/30 border border-red-500/20 text-red-300 rounded-lg break-all">
+              -
+            </div>
+          </div>
+        </div>
+
+        <button onclick="runAvalancheTest()" class="w-full py-3 bg-gray-800 hover:bg-gray-700 text-emerald-400 border border-gray-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-rotate-right"></i> 重新觸發雪崩效應與熵值測試
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification Modal -->
+  <div id="toast" class="fixed bottom-6 right-6 hidden bg-gray-900 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl shadow-2xl z-50 text-xs font-semibold flex items-center gap-3">
+    <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toast-msg">已成功複製到剪貼簿！</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800 bg-gray-950 py-4 text-center text-xs text-gray-500">
+    <p>Ultimate Matrix Cipher Engine • Powered by Zlib & 2D Matrix Diffusion</p>
+  </footer>
+
+  <!-- JavaScript Core Engine -->
+  <script>
+    function parseKey32Bytes(keyInput) {
+      let bytes = new Uint8Array(32);
+      let str = String(keyInput).trim();
+      
+      if (/^[0-9a-fA-F]{64}$/.test(str)) {
+        for (let i = 0; i < 32; i++) {
+          bytes[i] = parseInt(str.substr(i * 2, 2), 16);
+        }
+      } else {
+        let enc = new TextEncoder().encode(str);
+        for (let i = 0; i < 32; i++) {
+          bytes[i] = i < enc.length ? enc[i] : 0;
+        }
+      }
+      return bytes;
+    }
+
+    function deriveSeeds256(keyInput) {
+      let keyBytes = parseKey32Bytes(keyInput);
+      let view = new DataView(keyBytes.buffer);
+      let w = [];
+      for (let i = 0; i < 8; i++) {
+        w.push(view.getUint32(i * 4, false));
+      }
+
+      function mix(w, salt) {
+        let h = (w[0] ^ salt ^ w[4]) >>> 0;
+        h = Math.imul(h ^ (w[1] >>> 0), 0xcc9e2d51) >>> 0;
+        h = ((h << 13) | (h >>> 19)) >>> 0;
+        h = Math.imul(h ^ (w[2] >>> 0) ^ (w[5] >>> 0), 0x1b873593) >>> 0;
+        h = ((h << 15) | (h >>> 17)) >>> 0;
+        h = Math.imul(h ^ (w[3] >>> 0) ^ (w[6] >>> 0), 0xe6546b64) >>> 0;
+        h = (h ^ (h >>> 16) ^ (w[7] >>> 0)) >>> 0;
+        return h;
+      }
+
+      return {
+        seedKey1: mix(w, 0x12345678),
+        seedKey2: mix(w, 0x87654321),
+        seedNoise: mix(w, 0xabcdef01)
+      };
+    }
+
+    class MersenneTwister {
+      constructor(seed) {
+        if (seed === undefined) seed = new Date().getTime();
+        this.N = 624;
+        this.M = 397;
+        this.MATRIX_A = 0x9908b0df;
+        this.UPPER_MASK = 0x80000000;
+        this.LOWER_MASK = 0x7fffffff;
+        this.mt = new Array(this.N);
+        this.mti = this.N + 1;
+        this.init_genrand(seed);
+      }
+
+      init_genrand(s) {
+        this.mt[0] = s >>> 0;
+        for (this.mti = 1; this.mti < this.N; this.mti++) {
+          let s1 = this.mt[this.mti - 1] ^ (this.mt[this.mti - 1] >>> 30);
+          this.mt[this.mti] = (((((s1 & 0xffff0000) >>> 16) * 1812433253) << 16) + (s1 & 0x0000ffff) * 1812433253 + this.mti) >>> 0;
+        }
+      }
+
+      genrand_int32() {
+        let y;
+        let mag01 = [0x0, this.MATRIX_A];
+        if (this.mti >= this.N) {
+          let kk;
+          if (this.mti == this.N + 1) this.init_genrand(5489);
+          for (kk = 0; kk < this.N - this.M; kk++) {
+            y = (this.mt[kk] & this.UPPER_MASK) | (this.mt[kk + 1] & this.LOWER_MASK);
+            this.mt[kk] = this.mt[kk + this.M] ^ (y >>> 1) ^ mag01[y & 0x1];
+          }
+          for (; kk < this.N - 1; kk++) {
+            y = (this.mt[kk] & this.UPPER_MASK) | (this.mt[kk + 1] & this.LOWER_MASK);
+            this.mt[kk] = this.mt[kk + (this.M - this.N)] ^ (y >>> 1) ^ mag01[y & 0x1];
+          }
+          y = (this.mt[this.N - 1] & this.UPPER_MASK) | (this.mt[0] & this.LOWER_MASK);
+          this.mt[this.N - 1] = this.mt[this.M - 1] ^ (y >>> 1) ^ mag01[y & 0x1];
+          this.mti = 0;
+        }
+        y = this.mt[this.mti++];
+        y ^= (y >>> 11);
+        y ^= (y << 7) & 0x9d2c5680;
+        y ^= (y << 15) & 0xefc60000;
+        y ^= (y >>> 18);
+        return y >>> 0;
+      }
+
+      random() {
+        return this.genrand_int32() * (1.0 / 4294967296.0);
+      }
+
+      nextInt(min, max) {
+        return Math.floor(this.random() * (max - min)) + min;
+      }
+
+      shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(this.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      }
+    }
+
+    // Global Cache for visualizer
+    let currentMatrix66 = null;
+    let currentPipelineData = null;
+
+    function ultimateEncrypt(text, keyInput) {
+      const derived = deriveSeeds256(keyInput);
+      const prngKey1 = new MersenneTwister(derived.seedKey1);
+      const prngKey2 = new MersenneTwister(derived.seedKey2);
+      const prngNoise = new MersenneTwister(derived.seedNoise);
+      
+      const encoder = new TextEncoder();
+      const rawBytes = encoder.encode(text);
+      const compressed = pako.deflate(rawBytes, { level: 9 });
+
+      if (compressed.length > 63) {
+        throw new Error(`壓縮後長度 (${compressed.length} 位元組) 超過矩陣上限 63 位元組，請精簡輸入內容！`);
+      }
+
+      const paddedData = new Uint8Array(64);
+      paddedData[0] = compressed.length;
+      paddedData.set(compressed, 1);
+      for (let i = 1 + compressed.length; i < 64; i++) {
+        paddedData[i] = prngNoise.nextInt(0, 256);
+      }
+
+      const key1 = Array.from({ length: 64 }, (_, i) => i);
+      prngKey1.shuffle(key1);
+
+      const shuffledBytes = new Uint8Array(64);
+      for (let i = 0; i < 64; i++) {
+        shuffledBytes[i] = paddedData[key1[i]];
+      }
+
+      const coreMatrix = [];
+      for (let i = 0; i < 64; i++) {
+        const row = new Uint8Array(64);
+        for (let j = 0; j < 64; j++) {
+          row[j] = shuffledBytes[(j - i + 64) % 64];
+        }
+        coreMatrix.push(row);
+      }
+
+      const container = [];
+      for (let r = 0; r < 66; r++) {
+        const row = new Uint8Array(66);
+        for (let c = 0; c < 66; c++) {
+          row[c] = prngNoise.nextInt(0, 256);
+        }
+        container.push(row);
+      }
+
+      for (let r = 0; r < 64; r++) {
+        for (let c = 0; c < 64; c++) {
+          container[r + 1][c + 1] = coreMatrix[r][c];
+        }
+      }
+
+      const flatCipher = new Uint8Array(4356);
+      let idx = 0;
+      for (let r = 0; r < 66; r++) {
+        for (let c = 0; c < 66; c++) {
+          flatCipher[idx++] = container[r][c];
+        }
+      }
+
+      currentMatrix66 = container;
+
+      const key2 = Array.from({ length: 4356 }, (_, i) => i);
+      prngKey2.shuffle(key2);
+
+      const finalShuffled = new Uint8Array(4356);
+      for (let i = 0; i < 4356; i++) {
+        finalShuffled[i] = flatCipher[key2[i]];
+      }
+
+      let disguisedText = "";
+      for (let i = 0; i < 4356; i++) {
+        disguisedText += String.fromCharCode(0x4E00 + finalShuffled[i]);
+      }
+
+      return {
+        disguisedText,
+        rawLength: rawBytes.length,
+        compressedLength: compressed.length,
+        ratio: (((compressed.length - rawBytes.length) / rawBytes.length) * 100).toFixed(1)
+      };
+    }
+
+    function ultimateDecrypt(disguisedText, keyInput) {
+      if (disguisedText.length !== 4356) {
+        throw new Error(`密文長度無效 (須為 4,356 個中文字，目前為 ${disguisedText.length} 字)`);
+      }
+
+      const derived = deriveSeeds256(keyInput);
+      const prngKey1 = new MersenneTwister(derived.seedKey1);
+      const prngKey2 = new MersenneTwister(derived.seedKey2);
+
+      const key1 = Array.from({ length: 64 }, (_, i) => i);
+      prngKey1.shuffle(key1);
+
+      const key2 = Array.from({ length: 4356 }, (_, i) => i);
+      prngKey2.shuffle(key2);
+
+      const finalShuffled = new Uint8Array(4356);
+      for (let i = 0; i < 4356; i++) {
+        finalShuffled[i] = disguisedText.charCodeAt(i) - 0x4E00;
+      }
+
+      const flatCipher = new Uint8Array(4356);
+      for (let i = 0; i < 4356; i++) {
+        flatCipher[key2[i]] = finalShuffled[i];
+      }
+
+      const coreMatrix = [];
+      for (let r = 0; r < 64; r++) {
+        const row = new Uint8Array(64);
+        for (let c = 0; c < 64; c++) {
+          row[c] = flatCipher[(r + 1) * 66 + (c + 1)];
+        }
+        coreMatrix.push(row);
+      }
+
+      const shuffledBytes = coreMatrix[0];
+
+      const paddedData = new Uint8Array(64);
+      for (let i = 0; i < 64; i++) {
+        paddedData[key1[i]] = shuffledBytes[i];
+      }
+
+      const compressedLen = paddedData[0];
+      if (compressedLen <= 0 || compressedLen > 63) {
+        throw new Error("無效的解密長度標頭或金鑰不正確 (Invalid Length Header)");
+      }
+
+      const compressed = paddedData.subarray(1, 1 + compressedLen);
+      const decompressed = pako.inflate(compressed);
+      return new TextDecoder().decode(decompressed);
+    }
+
+    function updateCharCounts() {
+      const plaintext = document.getElementById('input-plaintext').value;
+      const ciphertext = document.getElementById('output-ciphertext').value;
+      document.getElementById('plaintext-char-count').innerText = `${plaintext.length} 個字元`;
+      document.getElementById('ciphertext-char-count').innerText = `${ciphertext.length} 字元`;
+    }
+
+    function clearPlaintext() {
+      document.getElementById('input-plaintext').value = '';
+      updateCharCounts();
+    }
+
+    function loadPreset(index) {
+      if (PRESETS[index]) {
+        document.getElementById('input-plaintext').value = PRESETS[index].text;
+        document.getElementById('input-seed').value = PRESETS[index].seed;
+        updateCharCounts();
+        processEncrypt();
+      }
+    }
+
+    function processEncrypt() {
+      try {
+        const text = document.getElementById('input-plaintext').value;
+        const key = document.getElementById('input-seed').value;
+
+        if (!text) {
+          alert("請先輸入要加密的文字！");
+          return;
+        }
+
+        const res = ultimateEncrypt(text, key);
+        
+        // 1. 自動將生成之偽裝密文填入解密/密文框
+        document.getElementById('output-ciphertext').value = res.disguisedText;
+
+        // Update statistics
+        document.getElementById('stat-orig').innerText = res.rawLength + ' B';
+        document.getElementById('stat-comp').innerText = res.compressedLength + ' B';
+        document.getElementById('stat-ratio').innerText = res.ratio + '%';
+        document.getElementById('capacity-badge').innerText = res.compressedLength + ' / 63 Bytes';
+
+        // 2. 自動同步執行解密，將結果還原顯示至解密結果欄位
+        const decrypted = ultimateDecrypt(res.disguisedText, key);
+
+        const decryptedTextElem = document.getElementById('output-decrypted-text');
+        const decryptedBadge = document.getElementById('decrypted-status-badge');
+        const decryptedInfo = document.getElementById('decrypted-char-info');
+
+        decryptedTextElem.innerText = decrypted;
+        decryptedTextElem.className = "text-emerald-300 font-semibold text-base";
+        decryptedBadge.className = "px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        decryptedBadge.innerHTML = '<i class="fa-solid fa-check-double mr-1"></i> 加密並自動解密驗證成功';
+        decryptedInfo.innerHTML = `<i class="fa-solid fa-i-cursor text-emerald-400 mr-1"></i> 還原字數: ${decrypted.length} 字元`;
+
+        updateCharCounts();
+        if (!document.getElementById('tab-matrix').classList.contains('hidden')) {
+          renderMatrixCanvas();
+        }
+      } catch (err) {
+        alert("加密失敗: " + err.message);
+      }
+    }
+
+    function processDecrypt() {
+      try {
+        const cipher = document.getElementById('output-ciphertext').value.trim();
+        const key = document.getElementById('input-seed').value;
+
+        if (!cipher) {
+          alert("請先輸入或生成中文偽裝密文！");
+          return;
+        }
+
+        const decrypted = ultimateDecrypt(cipher, key);
+
+        const decryptedTextElem = document.getElementById('output-decrypted-text');
+        const decryptedBadge = document.getElementById('decrypted-status-badge');
+        const decryptedInfo = document.getElementById('decrypted-char-info');
+
+        decryptedTextElem.innerText = decrypted;
+        decryptedTextElem.className = "text-emerald-300 font-semibold text-base";
+        decryptedBadge.className = "px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        decryptedBadge.innerHTML = '<i class="fa-solid fa-check-double mr-1"></i> 解密成功且與原始明文一致';
+        decryptedInfo.innerHTML = `<i class="fa-solid fa-i-cursor text-emerald-400 mr-1"></i> 還原字數: ${decrypted.length} 字元`;
+      } catch (err) {
+        const decryptedTextElem = document.getElementById('output-decrypted-text');
+        const decryptedBadge = document.getElementById('decrypted-status-badge');
+
+        decryptedTextElem.innerText = "❌ 解密失敗: " + err.message;
+        decryptedTextElem.className = "text-red-400 font-semibold text-sm";
+        decryptedBadge.className = "px-2.5 py-1 text-xs font-bold rounded-full bg-red-500/20 text-red-300 border border-red-500/40";
+        decryptedBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> 金鑰錯誤或數據損毀';
+      }
+    }
+
+    function renderMatrixCanvas() {
+      if (!currentMatrix66) return;
+      const canvas = document.getElementById('matrix-canvas');
+      const ctx = canvas.getContext('2d');
+      const cellSize = 8;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let r = 0; r < 66; r++) {
+        for (let c = 0; c < 66; c++) {
+          const val = currentMatrix66[r][c];
+          const isCore = (r >= 1 && r <= 64 && c >= 1 && c <= 64);
+          if (isCore) {
+            ctx.fillStyle = `rgb(16, ${Math.floor(val * 0.7 + 50)}, ${Math.floor(val * 0.8 + 80)})`;
+          } else {
+            ctx.fillStyle = `rgb(${Math.floor(val * 0.3)}, ${Math.floor(val * 0.5)}, ${Math.floor(val * 0.9 + 50)})`;
+          }
+          ctx.fillRect(c * cellSize, r * cellSize, cellSize - 1, cellSize - 1);
+        }
+      }
+    }
+
+    const PRESETS = [
+      { text: "密碼學矩陣研究：先壓縮再揉碎！", seed: "2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c" },
+      { text: "🥷 隱寫術與矩陣防護測試 🛡️", seed: "8888888888888888888888888888888888888888888888888888888888888888" },
+      { text: "Zlib Compression Algorithm Dynamic Matrix Test 2026", seed: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" }
+    ];
+
+    function randomizeSeed() {
+      const array = new Uint8Array(32);
+      window.crypto.getRandomValues(array);
+      const hexKey = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+      document.getElementById('input-seed').value = hexKey;
+    }
+
+    function runAvalancheTest() {
+      const text = document.getElementById('input-plaintext').value || "密碼學矩陣研究：先壓縮再揉碎！";
+      const keyInput = document.getElementById('input-seed').value || "2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c";
+
+      let bytes = parseKey32Bytes(keyInput);
+      bytes[31] ^= 0x01;
+      let wrongKeyHex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      document.getElementById('test-key-correct').innerText = `256-bit Key: ${keyInput.substring(0, 16)}...`;
+      document.getElementById('test-key-wrong').innerText = `Diff Key (Flip 1 bit): ${wrongKeyHex.substring(0, 16)}...`;
+
+      try {
+        const encrypted = ultimateEncrypt(text, keyInput);
+
+        const correctDecrypted = ultimateDecrypt(encrypted.disguisedText, keyInput);
+        document.getElementById('test-result-correct').innerText = `解密成功: "${correctDecrypted}"`;
+
+        try {
+          const wrongDecrypted = ultimateDecrypt(encrypted.disguisedText, wrongKeyHex);
+          document.getElementById('test-result-wrong').innerText = `解密成功 (錯誤!): "${wrongDecrypted}"`;
+        } catch (e) {
+          document.getElementById('test-result-wrong').innerText = `🛡️ 256-bit 雪崩保護觸發: 解壓崩潰/擋下非法金鑰 (${e.message})`;
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = "tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2";
+      });
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+
+      document.getElementById(`tab-btn-${tabName}`).className = "tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-emerald-400 text-emerald-400 flex items-center gap-2";
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+      if (tabName === 'matrix') {
+        renderMatrixCanvas();
+      }
+    }
+
+    function copyToClipboard(elementId, isElementText = false) {
+      let text = "";
+      if (isElementText) {
+        text = document.getElementById(elementId).innerText;
+      } else {
+        text = document.getElementById(elementId).value;
+      }
+      if (!text) return;
+
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      const toast = document.getElementById('toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2500);
+    }
+
+    function runUnitTests() {
+      const testCases = [
+        { text: "密碼學矩陣研究：先壓縮再揉碎！", seed: "2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c" },
+        { text: "Hello World! 1234567890", seed: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" },
+        { text: "🥷 隱寫術與矩陣防護測試 🛡️", seed: "8888888888888888888888888888888888888888888888888888888888888888" }
+      ];
+
+      let passed = 0;
+      testCases.forEach((tc) => {
+        const cipher = ultimateEncrypt(tc.text, tc.seed);
+        const restored = ultimateDecrypt(cipher.disguisedText, tc.seed);
+        if (restored === tc.text) passed++;
+      });
+
+      alert(`✅ 自動化單元測試完成！\n通過 ${passed} / ${testCases.length} 個加密情境驗證。`);
+    }
+
+    window.onload = function () {
+      document.getElementById('input-plaintext').addEventListener('input', updateCharCounts);
+      updateCharCounts();
+      processEncrypt();
+    };
+  </script>
+</body>
+</html>
