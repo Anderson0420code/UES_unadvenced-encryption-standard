@@ -1,6 +1,6 @@
 # UES_unadvenced-encryption-standard
-A system for anti ai crawling
-# unadvanced-encryption-standard (UES) Technical & Web GUI Documentation
+A system for anti ai crawling If bugs/problems found, please contact andersonlilife@icloud.com or make a branch
+ # unadvanced-encryption-standard (UES) Technical & Web GUI Documentation
 
 `unadvanced-encryption-standard` is a data steganography and camouflage protection system implemented via Python and modern browser-native JavaScript (Web GUI). The primary design goal of this system is **anti-AI web crawling and unauthorized data harvesting**. By employing data compression, Pseudo-Random Number Generator (PRNG) permutations, matrix transformations, and character/image encoding, raw text, confidential files, or images are transformed into text or grayscale noise images that AI crawlers cannot parse or extract semantic features from, preventing data from being ingested into AI model training sets.
 
