@@ -1,19 +1,19 @@
-# UES_unadvenced-encryption-standard
-A system for anti ai crawling If bugs/problems found, please contact andersonlilife@icloud.com or make a branch
- # unadvanced-encryption-standard (UES) Technical & Web GUI Documentation
+# UES_unadvanced-encryption-standard
+A system for anti-AI crawling. If bugs/problems are found, please contact andersonlilife@icloud.com or create a branch.
+# UES Technical & Web GUI Documentation
 
-`unadvanced-encryption-standard` is a data steganography and camouflage protection system implemented via Python and modern browser-native JavaScript (Web GUI). The primary design goal of this system is **anti-AI web crawling and unauthorized data harvesting**. By employing data compression, Pseudo-Random Number Generator (PRNG) permutations, matrix transformations, and character/image encoding, raw text, confidential files, or images are transformed into text or grayscale noise images that AI crawlers cannot parse or extract semantic features from, preventing data from being ingested into AI model training sets.
+`unadvanced-encryption-standard` is a data steganography and camouflage protection system implemented via Python and modern browser-native JavaScript (Web GUI). The primary design goal of this system is to prevent automated crawlers, LLM training pipelines, and image analysis tools from easily extracting and understanding sensitive text and image content without the correct key.
 
 ---
 
 ## System Design Goals & Principles
 
-Traditional text and images on the public web are easily analyzed by automated crawlers and utilized to train Large Language Models (LLMs) or vision models. This system disrupts this process through the following mechanisms:
+Traditional text and images on the public web are easily analyzed by automated crawlers and utilized to train Large Language Models (LLMs) or vision models. This system disrupts this process through multiple layers of data obfuscation and camouflage:
 
-1. **Semantic Structure Destruction**: Compresses text, subjects it to dual/dynamic chaotic permutations, and maps it to semantically unrelated Unicode Chinese character blocks (`0x4E00` offset), ensuring text crawlers only extract meaningless character combinations.
-2. **Image Data Noisification**: Extracts raw RGBA image pixel data, compresses and permutes it, and repackages it into single-channel grayscale (Mode 'L') or pixel noise images, blinding image crawlers to original visual features.
+1. **Semantic Structure Destruction**: Compresses text, subjects it to dual/dynamic chaotic permutations, and maps it to semantically unrelated Unicode Chinese character blocks (`0x4E00` offset), making the output visually resemble harmless text content rather than encoded binary or structured data.
+2. **Image Data Noisification**: Extracts raw RGBA image pixel data, compresses and permutes it, and repackages it into single-channel grayscale (Mode 'L') or pixel noise images, blinding image crawlers and AI models that rely on natural color/edge patterns.
 3. **Dynamic Boundary Noise**: Wraps outer pseudo-random generated walls around the core data matrix to interfere with automated feature extraction algorithms.
-4. **Zero-Backend Pure Frontend (Web GUI)**: Provides a serverless web workbench based on HTML5 Canvas, Tailwind CSS, and JavaScript (Pako Zlib, Web Crypto API), ensuring total local privacy protection inside the browser.
+4. **Zero-Backend Pure Frontend (Web GUI)**: Provides a serverless web workbench based on HTML5 Canvas, Tailwind CSS, and JavaScript (Pako Zlib, Web Crypto API), ensuring total local privacy protection and zero cloud dependency for the primary interactive front-end experience.
 
 ---
 
@@ -124,7 +124,4 @@ restore_result = restore_image("protected.png", "restored.png", key)
 
 1. **D01 Capacity Limit**: `UES-D01` requires text compressed via `zlib` to not exceed 63 bytes. For longer data, please use `UES-D02`.
 2. **Key Precision**: Encryption and decryption heavily rely on the PRNG seed derived from the key. If the key differs by even 1 bit, decompression will fail.
-3. **Cryptographic Security Positioning**: The core purpose of this project is **data steganography, obfuscation, and anti-AI automated harvesting**. System randomness relies on Mersenne Twister (MT19937) / 
-Pseudo-RNG algorithms and should not replace standard cryptographic algorithms like AES for high-security financial transmission.
-
-
+3. **Cryptographic Security Positioning**: The core purpose of this project is **data steganography, obfuscation, and anti-AI automated harvesting**. System randomness relies on Mersenne Twister and similar pseudorandom algorithms and should not replace standard cryptographic algorithms like AES for high-security financial transmission.
