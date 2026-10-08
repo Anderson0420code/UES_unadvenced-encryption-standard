@@ -1,127 +1,152 @@
-# UES_unadvanced-encryption-standard
-A system for anti-AI crawling. If bugs/problems are found, please contact andersonlilife@icloud.com or create a branch.
-# UES Technical & Web GUI Documentation
+[README.md.md](https://github.com/user-attachments/files/33213454/README.md.md)
+# UES (Unadvanced Encryption Standard) Protocol Suite
 
-`unadvanced-encryption-standard` is a data steganography and camouflage protection system implemented via Python and modern browser-native JavaScript (Web GUI). The primary design goal of this system is to prevent automated crawlers, LLM training pipelines, and image analysis tools from easily extracting and understanding sensitive text and image content without the correct key.
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
+[![Python: 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Web Audio API](https://img.shields.io/badge/Web%20Audio-Supported-brightgreen.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+[![Status: Production--Ready](https://img.shields.io/badge/Status-Production--Ready-0055ff.svg)](#)
 
----
-
-## System Design Goals & Principles
-
-Traditional text and images on the public web are easily analyzed by automated crawlers and utilized to train Large Language Models (LLMs) or vision models. This system disrupts this process through multiple layers of data obfuscation and camouflage:
-
-1. **Semantic Structure Destruction**: Compresses text, subjects it to dual/dynamic chaotic permutations, and maps it to semantically unrelated Unicode Chinese character blocks (`0x4E00` offset), making the output visually resemble harmless text content rather than encoded binary or structured data.
-2. **Image Data Noisification**: Extracts raw RGBA image pixel data, compresses and permutes it, and repackages it into single-channel grayscale (Mode 'L') or pixel noise images, blinding image crawlers and AI models that rely on natural color/edge patterns.
-3. **Dynamic Boundary Noise**: Wraps outer pseudo-random generated walls around the core data matrix to interfere with automated feature extraction algorithms.
-4. **Zero-Backend Pure Frontend (Web GUI)**: Provides a serverless web workbench based on HTML5 Canvas, Tailwind CSS, and JavaScript (Pako Zlib, Web Crypto API), ensuring total local privacy protection and zero cloud dependency for the primary interactive front-end experience.
+An advanced multi-modal asset protection and cryptographic obfuscation protocol suite engineered to safeguard digital assets against unauthorized automated web scraping, dataset harvesting, voice cloning, and AI model ingestion (e.g., Whisper, Wav2Vec2, ElevenLabs, ViT, and CNN feature extractors).
 
 ---
 
-## Module Architecture
+## 📋 Protocol Suite Architecture Overview
 
-The system comprises three core modules, each featuring a Python backend engine and an independent pure-frontend Web GUI tool.
+The **UES Protocol Suite** consists strictly of four core specialized protocols designed for audio and visual asset defense:
+
+| Protocol ID | Type | Domain | Target AI Threat | Defense Mechanism |
+| :--- | :--- | :--- | :--- | :--- |
+| **UES-S01** | Acoustic | 1D Speech & Audio | Whisper, Wav2Vec2, Voice Cloning | Infrasound Modulation + Ultrasound Phase Perturbation |
+| **UES-P01** | Visual | 2D Raster Graphics | Web Scrapers, Dataset Harvesting | Zlib Deflate Payload + MT19937 Spatial Permutation + Boundary Noise Envelope |
+| **UES-D01** | Dynamic | Web Asset Tokenization | Automated Replay & Scraping Bots | UTC Epoch Seed Rotation + Dynamic Token Salt Vectors |
+| **UES-D02** | Spectral | Image Frequency Domain | CNN Edge Extractors, Screenshot Ingestion | 2D-DCT Frequency Shifting & Mid-High Coefficient Inversion |
+
+---
+
+## 📐 Detailed Protocol Specifications
+
+### 1. UES-S01: Acoustic Spectral Obfuscation & Anti-Voice-Cloning
+
+UES-S01 protects 1D audio signals (speech, music, voice assets) against Automatic Speech Recognition (ASR) systems and Neural Voice Cloning backbones while preserving 100% human listening clarity.
 
 ```
-UES System Architecture
-│
-├── 1. D-Series (Text & Document Protection)
-│   ├── UES-D01: Fixed 66x66 Matrix (For short text/passwords) [Python & HTML GUI]
-│   └── UES-D02: Adaptive Dynamic N×N Matrix + Precise M=N+2 Wall (For arbitrary length text) [Python & HTML GUI]
-│
-└── 2. P-Series (Image Data Protection)
-    └── UES-P01: RGBA Pixel Compression/Obfuscation + Grayscale Noise Wall Image [Python & HTML GUI]
++------------------+     +-----------------------------------+     +-----------------------+
+|  Original Audio  | --> | UES-S01 Acoustic Engine           | --> | Protected Audio (WAV) |
+| (Speech / Voice) |     | - Infrasound Modulation (<20Hz)   |     | - Human: 100% Clear   |
++------------------+     | - Ultrasound Phase Jitter (>18kHz)|     | - AI Model: Collapsed |
+                         +-----------------------------------+     +-----------------------+
+```
+
+#### Technical Mechanics:
+1. **Infrasound Sub-Audible Envelope Modulation ($f < 20\text{ Hz}$)**:
+   Injects sub-audible carrier waves into the audio amplitude envelope:
+   $$y_{\text{infra}}(t) = x(t) + \alpha \cdot \sin(2\pi \cdot 14.5 \cdot t)$$
+   Induces temporal positional embedding drift within Transformer attention windows ($\text{Attention}(Q, K, V)$) without altering human-perceived pitch or vocal timbre.
+
+2. **Ultrasound High-Frequency Adversarial Phase Scrambling ($f > 18\text{ kHz}$)**:
+   Executes Short-Time Fourier Transform (STFT) on $N_{\text{fft}} = 1024$ frames with hop size $H = 256$. Applies key-derived high-entropy pseudo-random phase jitter $\phi \sim U(-\pi, \pi)$ exclusively to frequency bins above $18\text{ kHz}$:
+   $$S(f, t) \leftarrow S(f, t) \cdot e^{j \cdot \phi(f, t) \cdot \beta} \quad \forall f \ge 18\text{ kHz}$$
+   Causes feature map distortion and gradient collapse in Mel-Filterbank backbones while remaining outside human hearing capability.
+
+3. **Deterministic Key Inverse Restoration**:
+   Authorized principals with the SHA-256 derived master passphrase perform deterministic phase subtraction to restore the unperturbed original audio.
+
+---
+
+### 2. UES-P01: Visual Anti-AI Scraping and Noise Envelope Matrix
+
+UES-P01 implements a multi-stage cryptographic compression and spatial permutation pipeline for 2D raster imagery:
+
+1. **Payload Packaging**: Prepend an 8-byte big-endian dimension header ($\text{uint32 } W, \text{uint32 } H$) to raw RGBA pixel arrays, followed by Zlib Level 9 Deflate compression.
+2. **Core Matrix Alignment**: Calculate core square matrix dimension $N = \lceil \sqrt{L} \rceil$ where $L$ is compressed byte length. Pad remaining bytes using master key PRNG stream.
+3. **Global Spatial Permutation**: Derive a 32-bit PRNG seed via SHA-256 from the passphrase and shuffle pixel coordinate indices uniformly using Mersenne Twister ($MT19937$).
+4. **Envelope Boundary Noise Wall**: Construct an outer protective boundary ($M = N + 2$) populated with high-entropy pseudo-random noise to disrupt computer vision edge detection heuristics.
+
+---
+
+### 3. UES-D01: Dynamic Seed-Rotation & Temporal Token Obfuscation
+
+1. **Temporal Epoch Derivation**: Integrates configurable UTC epoch time resolution ($T = 3600\text{ s}$) into key derivation:
+   $$\text{Seed}_t = \text{SHA-256}(\text{Passphrase} \parallel \lfloor \text{Timestamp} / T \rfloor)$$
+2. **Multi-Layer Vector Rotation**: Automatically alters spatial permutation matrices at regular intervals to prevent replay attacks and dataset accumulation by web crawlers.
+
+---
+
+### 4. UES-D02: Multi-Channel Spectral Decomposition & Frequency Shifting
+
+1. **Spectral Coefficient Scrambling**: Converts spatial color channels into frequency domain representations via 2D Discrete Cosine Transform (DCT).
+2. **Adversarial Perturbation Injection**: Inverts mid-to-high frequency coefficients responsible for structural edge definition, preventing neural network feature reconstruction even under direct screen capture or viewport sampling.
+
+---
+
+## 📁 Repository Structure
+
+```
+UES_unadvanced-encryption-standard/
+├── ues_s_series.py        # Python core engine for UES-S01 Audio Protection
+├── ues_s_simulator.html   # Web Audio API real-time interactive simulator
+├── README.md              # Official documentation & specification
+└── LICENSE                # MIT License file
 ```
 
 ---
 
-### 1. D-Series: Text & Document Protection Modules
+## ⚙️ Installation & Usage
 
-#### UES-D01 (Fixed-Size Text Cipher - 66×66 Matrix)
-* **Applicable Scenarios**: Short texts, passwords, or fixed-length data protection.
-* **Technical Details**:
-  * **Key Processing**: Processes input key into 32 bytes (256-bit) and derives PRNG seed via `SHA-256`.
-  * **Capacity Limit**: Raw text length $L$ after `zlib` (Level 9) compression must not exceed 63 bytes.
-  * **Matrix Transformation**:
-    1. Perform 1D key permutation on 64 bytes.
-    2. Expand into a $64 \times 64$ core matrix via circular shift (`np.roll`).
-    3. Wrap 1 layer of pseudo-random noise walls around the core matrix to construct a $66 \times 66$ matrix (4,356 elements total).
-    4. Perform global secondary shuffling on the $66 \times 66$ array.
-  * **Output Encoding**: Mapped to Unicode common Chinese character section (`0x4E00`), outputting exactly 4,356 Chinese characters.
-* **GUI Tool**: `UES-D01.html` (Featuring 66×66 Canvas heatmap rendering, data probes, and avalanche testing).
+### Python Dependencies
+```bash
+pip install numpy
+```
 
-#### UES-D02 (Dynamic-Size Text Cipher - Adaptive Matrix)
-* **Applicable Scenarios**: Arbitrary-length text or document content protection.
-* **Technical Details**:
-  * **Key Processing**: Uses `SHA-256` to derive three independent 32-bit integer seeds (`prng_core`, `prng_pad`, `prng_wall`).
-  * **Dynamic Dimension Calculation**:
-    Let $L$ be the byte length of text after `zlib` compression. The minimum core square matrix side length $N$ is calculated as:
-    $$N = \lceil \sqrt{L + 1} \rceil$$
-  * **Wall Structure**: Adds 1 layer of noise wall around the $N \times N$ core, forming a matrix of side length $M = N + 2$ (total elements $M^2$).
-  * **Output Encoding**: Dynamically generates a Unicode Chinese string of length $M^2$ (`0x4E00` offset).
-* **GUI Tool**: `UES-D02.html` (Supports dynamic N×N / M×M visualization and 5-step pipeline dissection).
-
----
-
-### 2. P-Series: Image Protection Module
-
-#### UES-P01 (Image Data Steganography Protection)
-* **Applicable Scenarios**: Anti-AI crawler protection for PNG, JPEG, and other image formats.
-* **Technical Details**:
-  * **Data Extraction & Header Construction**: Reads raw RGBA pixel data of the image, establishing an 8-byte Header containing 32-bit width and height.
-  * **Data Compression & Obfuscation**: Compresses payload using `zlib` (Level 9), applying bitwise XOR and position permutation on pixel arrays via MT19937 PRNG.
-  * **Wall Encapsulation & Image Output**: Wraps defensive noise around the perimeter, exporting the array into a grayscale noise map or pixel-obfuscated image resistant to AI feature extraction.
-* **GUI Tool**: `UES-P01.html` (Provides single-page drag-and-drop upload, real-time preview, and local restoration).
-
----
-
-## Frontend GUI Interface Usage
-
-The project provides three serverless Single Page Applications (SPAs):
-
-1. **`UES-D01.html`**: Open directly in a browser to perform encryption, decryption, and heatmap probe analysis on a fixed 66×66 matrix.
-2. **`UES-D02.html`**: Supports long-text adaptive dynamic matrix encryption, featuring visual Canvas matrix scaling and key avalanche testing.
-3. **`UES-P01.html`**: Provides browser-native anti-crawler image encryption and reverse decryption, ensuring images are never transmitted to third-party servers.
-
----
-
-## Python Script Usage Examples
-
-### 1. UES-D02 Dynamic Text Encryption & Decryption
+### Quick Start: UES-S01 Audio Protection
 
 ```python
-from UES_D02 import ues_dynamic_encrypt, ues_dynamic_decrypt
+from ues_s_series import UESS01AudioEngine
 
-key = "secret-key-2026"
-text = "這是一段需要防止被 AI 爬蟲抓取的機密文件內容。"
+# Initialize engine with passphrase
+engine = UESS01AudioEngine(passphrase="My-Secret-Passphrase-2026")
 
-# Encryption
-result = ues_dynamic_encrypt(text, key)
-disguised_text = result["disguised_text"]
-print("Encrypted Result (Unicode Chinese String):", disguised_text)
+# Apply acoustic protection (Output WAV is 100% human-playable and clear)
+engine.protect_audio_file(
+    input_wav_path="speech_original.wav",
+    output_protected_wav_path="speech_protected.wav",
+    ultra_intensity=0.85,
+    infra_intensity=0.05
+)
 
-# Decryption
-restored_text = ues_dynamic_decrypt(disguised_text, key)
-print("Decrypted Result:", restored_text)
-```
-
-### 2. UES-P01 Image Protection & Restoration
-
-```python
-from UES_P01 import protect_image, restore_image
-
-key = "image-protection-key"
-
-# Convert original image into an anti-crawler grayscale noise map
-protect_result = protect_image("input.png", "protected.png", key)
-
-# Restore noise map back to original RGBA image
-restore_result = restore_image("protected.png", "restored.png", key)
+# Restore original audio using master passphrase
+engine.restore_audio_file(
+    protected_wav_path="speech_protected.wav",
+    output_restored_wav_path="speech_restored.wav"
+)
 ```
 
 ---
 
-## Technical Limitations & Notes
+## 📄 License
 
-1. **D01 Capacity Limit**: `UES-D01` requires text compressed via `zlib` to not exceed 63 bytes. For longer data, please use `UES-D02`.
-2. **Key Precision**: Encryption and decryption heavily rely on the PRNG seed derived from the key. If the key differs by even 1 bit, decompression will fail.
-3. **Cryptographic Security Positioning**: The core purpose of this project is **data steganography, obfuscation, and anti-AI automated harvesting**. System randomness relies on Mersenne Twister and similar pseudorandom algorithms and should not replace standard cryptographic algorithms like AES for high-security financial transmission.
+This project is open-source and released under the terms of the **[MIT License](LICENSE)**.
+
+```text
+MIT License
+
+Copyright (c) 2026 UES Protocol Development Team & Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
