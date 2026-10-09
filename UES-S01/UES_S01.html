@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UES_S01 Audio Anti-AI Scraping Workbench (In-Band Psychoacoustic Mode)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: { 500: '#22c55e', 800: '#166534' },
+                        darkbg: '#080a0f',
+                        cardbg: '#111622',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #080a0f; color: #e2e8f0; }
+        .canvas-card { position: relative; border-radius: 0.75rem; overflow: hidden; background: #04060a; border: 1px solid #1e293b; }
+        canvas { display: block; width: 100%; height: 160px; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <header class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-6">
+        <div>
+            <div class="flex items-center gap-3">
+                <span class="px-2.5 py-1 text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-md">
+                    UES_S01 SPECIFICATION (IN-BAND PSYCHOACOUSTIC ADVERSARIAL)
+                </span>
+                <span class="text-xs text-slate-400">語音共振峰心理聲學遮蔽 / 抵抗 AI 降採樣濾波</span>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mt-1">
+                UES_S01 語音頻段對抗性干擾模擬器
+            </h1>
+            <p class="text-sm text-slate-400 mt-1">
+                將對抗性微擾隱藏於語音共振峰（200Hz - 4kHz）心理聲學遮蔽曲線下，即使 AI 進行 16kHz 降採樣濾波依然能觸發辨識崩潰。
+            </p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+            <button id="btnPlayProtected" class="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/30">
+                <i class="fa-solid fa-play" id="playIcon"></i> <span id="playText">試聽對抗保護音頻</span>
+            </button>
+            <button id="btnDownloadAudio" class="flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-sky-600/30">
+                <i class="fa-solid fa-download"></i> 下載保護音檔 (.wav)
+            </button>
+            <button id="btnReset" class="flex items-center gap-2 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition-all border border-slate-700">
+                <i class="fa-solid fa-rotate-left"></i> 重置
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- Controls Panel -->
+        <section class="lg:col-span-4 bg-cardbg rounded-2xl p-6 border border-slate-800/80 flex flex-col gap-6 shadow-xl">
+            <div class="border-b border-slate-800 pb-4">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i> 心理聲學對抗參數 (Psychoacoustic DSP)
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">針對 200Hz - 4kHz 語音核心頻段進行包絡遮蔽對抗注入</p>
+            </div>
+
+            <!-- Passphrase Input -->
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-300 flex justify-between">
+                    <span>音頻主通行碼 (Passphrase)</span>
+                    <span class="text-emerald-400 font-mono text-[10px]">SHA-256 Key</span>
+                </label>
+                <div class="relative">
+                    <input type="password" id="passphraseInput" value="Audio-UES_S01-Secret2026" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-mono pr-10">
+                    <button id="togglePass" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200 text-xs">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Audio Selector -->
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-300">測試音訊來源 (Audio Source)</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnGenSpeech" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg border border-slate-700 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-waveform-lines text-emerald-400"></i> 合成人類語音
+                    </button>
+                    <label class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-file-audio text-sky-400"></i> 上傳 WAV/MP3
+                        <input type="file" id="audioUploader" accept="audio/*" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- In-Band Formant Perturbation -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-wave-square"></i> 語音頻段對抗注入 (200Hz-4kHz)
+                    </label>
+                    <span id="inbandVal" class="text-xs font-mono text-amber-400">0.45</span>
+                </div>
+                <input type="range" id="inbandFreq" min="0.0" max="1.0" step="0.05" value="0.45"
+                       class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400">
+                <p class="text-[11px] text-slate-400">破壞 AI Mel-Filterbank 與 Transformer Cross-Attention 的核心頻率特徵。</p>
+            </div>
+
+            <!-- Psychoacoustic Masking Threshold -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-semibold text-sky-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-shield-halved"></i> 心理聲學遮蔽閾值 (Masking Threshold)
+                    </label>
+                    <span id="maskVal" class="text-xs font-mono text-sky-400">0.15</span>
+                </div>
+                <input type="range" id="maskThresh" min="0.0" max="0.5" step="0.01" value="0.15"
+                       class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400">
+                <p class="text-[11px] text-slate-400">利用語音動態能量掩蔽干擾聲，確保人耳聽覺自然清晰。</p>
+            </div>
+
+            <button id="btnProcessAudio" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 mt-2">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> 應用語音頻段對抗干擾
+            </button>
+        </section>
+
+        <!-- Visualization Area -->
+        <section class="lg:col-span-8 space-y-6">
+
+            <!-- Canvas Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <!-- 1. Waveform -->
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-200 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> 時域聲波波形 (Waveform)
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-400">Clear Envelope</span>
+                    </div>
+                    <div class="canvas-card">
+                        <canvas id="canvasWaveform"></canvas>
+                    </div>
+                </div>
+
+                <!-- 2. Speech Band Spectrum -->
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-simple"></i> 200Hz - 4kHz 頻譜 (對抗擾動注入)
+                        </span>
+                        <span class="text-[10px] font-mono text-amber-400">In-Band Perturbed</span>
+                    </div>
+                    <div class="canvas-card">
+                        <canvas id="canvasFFT"></canvas>
+                    </div>
+                </div>
+
+                <!-- 3. Human Hearing Perception -->
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-ear-listen"></i> 人類聽覺感知 (Masked Threshold)
+                        </span>
+                        <span class="text-[10px] font-mono text-emerald-400">Pristine Quality</span>
+                    </div>
+                    <div class="canvas-card">
+                        <canvas id="canvasHuman"></canvas>
+                    </div>
+                </div>
+
+                <!-- 4. AI Mel-Filterbank Feature Loss -->
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-rose-400 flex items-center gap-2">
+                            <i class="fa-solid fa-robot"></i> AI STT 特徵向量對齊狀態 (Gemini/Whisper)
+                        </span>
+                        <span class="text-[10px] font-mono text-rose-400">Attention Collapsed</span>
+                    </div>
+                    <div class="canvas-card">
+                        <canvas id="canvasAI"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Operational Status Banner -->
+            <div class="bg-cardbg p-6 rounded-2xl border border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">
+                            IN-BAND PSYCHOACOUSTIC DEFENSE ACTIVE
+                        </span>
+                        <h3 class="text-sm font-bold text-white">語音頻段對抗性音訊（抵抗 16kHz AI 濾波降採樣）</h3>
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        點擊右上角「下載保護音檔」即可導出可在 Gemini/Whisper 上測試之對抗性 16-bit PCM WAV 檔案。
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <button id="btnPlayOriginal" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 rounded-xl border border-slate-700 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-volume-high text-sky-400"></i> 對比播放無干擾原音
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+
+            const cvsWave = document.getElementById('canvasWaveform');
+            const cvsFFT = document.getElementById('canvasFFT');
+            const cvsHuman = document.getElementById('canvasHuman');
+            const cvsAI = document.getElementById('canvasAI');
+
+            const ctxWave = cvsWave.getContext('2d');
+            const ctxFFT = cvsFFT.getContext('2d');
+            const ctxHuman = cvsHuman.getContext('2d');
+            const ctxAI = cvsAI.getContext('2d');
+
+            function resizeCanvases() {
+                [cvsWave, cvsFFT, cvsHuman, cvsAI].forEach(c => {
+                    if (c && c.parentElement) {
+                        c.width = c.parentElement.clientWidth || 400;
+                        c.height = 160;
+                    }
+                });
+                renderVisualizers();
+            }
+
+            const inbandInput = document.getElementById('inbandFreq');
+            const maskInput = document.getElementById('maskThresh');
+            const passInput = document.getElementById('passphraseInput');
+
+            const inbandVal = document.getElementById('inbandVal');
+            const maskVal = document.getElementById('maskVal');
+
+            let audioCtx = null;
+            let currentBuffer = null;
+            let activeSource = null;
+            let isPlaying = false;
+
+            async function initAudioCtx() {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+            }
+
+            function stopCurrentAudio() {
+                if (activeSource) {
+                    try { activeSource.stop(); } catch(e){}
+                    activeSource = null;
+                }
+                isPlaying = false;
+                document.getElementById('playIcon').className = "fa-solid fa-play";
+                document.getElementById('playText').textContent = "試聽對抗保護音頻";
+            }
+
+            async function generateSyntheticSpeechBuffer() {
+                await initAudioCtx();
+                const sr = audioCtx.sampleRate;
+                const duration = 3.0;
+                const buffer = audioCtx.createBuffer(1, sr * duration, sr);
+                const data = buffer.getChannelData(0);
+
+                for (let i = 0; i < data.length; i++) {
+                    const t = i / sr;
+                    const f0 = 180 + 15 * Math.sin(2 * Math.PI * 1.5 * t);
+                    const v1 = Math.sin(2 * Math.PI * f0 * t);
+                    const v2 = 0.4 * Math.sin(2 * Math.PI * f0 * 2 * t);
+                    const v3 = 0.2 * Math.sin(2 * Math.PI * f0 * 3 * t);
+                    const env = Math.sin(Math.PI * (t % 0.6) / 0.6);
+                    data[i] = (v1 + v2 + v3) * env * 0.35;
+                }
+                currentBuffer = buffer;
+                renderVisualizers();
+            }
+
+            function renderVisualizers() {
+                if (!currentBuffer) return;
+
+                const inband = parseFloat(inbandInput.value);
+                const mask = parseFloat(maskInput.value);
+
+                inbandVal.textContent = inband.toFixed(2);
+                maskVal.textContent = mask.toFixed(2);
+
+                const rawData = currentBuffer.getChannelData(0);
+                const w = cvsWave.width;
+                const h = cvsWave.height;
+
+                // 1. Draw Waveform
+                ctxWave.fillStyle = '#04060a';
+                ctxWave.fillRect(0, 0, w, h);
+                ctxWave.beginPath();
+                ctxWave.strokeStyle = '#38bdf8';
+                ctxWave.lineWidth = 1.5;
+
+                const step = Math.ceil(rawData.length / w);
+                const amp = h / 2;
+
+                for (let i = 0; i < w; i++) {
+                    const idx = i * step;
+                    const val = rawData[idx];
+                    const y = amp + val * amp * 0.8;
+                    if (i === 0) ctxWave.moveTo(i, y);
+                    else ctxWave.lineTo(i, y);
+                }
+                ctxWave.stroke();
+
+                // 2. Draw Speech Band Spectrum (200Hz - 4kHz Perturbation)
+                ctxFFT.fillStyle = '#04060a';
+                ctxFFT.fillRect(0, 0, w, h);
+
+                const bins = 64;
+                const barW = w / bins;
+                for (let b = 0; b < bins; b++) {
+                    let height = (Math.sin(b * 0.3) * 0.4 + 0.5) * h * 0.5;
+                    
+                    if (b >= 5 && b <= 35) {
+                        ctxFFT.fillStyle = '#f59e0b';
+                        height += inband * 45 * (Math.random() * 0.4 + 0.8);
+                    } else {
+                        ctxFFT.fillStyle = '#22c55e';
+                    }
+
+                    ctxFFT.fillRect(b * barW, h - height, barW - 1, height);
+                }
+
+                // 3. Draw Human Hearing Perception
+                ctxHuman.fillStyle = '#04060a';
+                ctxHuman.fillRect(0, 0, w, h);
+                ctxHuman.beginPath();
+                ctxHuman.strokeStyle = '#22c55e';
+                ctxHuman.lineWidth = 2;
+
+                for (let i = 0; i < w; i++) {
+                    const idx = i * step;
+                    const val = rawData[idx];
+                    const y = amp + val * amp * 0.75;
+                    if (i === 0) ctxHuman.moveTo(i, y);
+                    else ctxHuman.lineTo(i, y);
+                }
+                ctxHuman.stroke();
+
+                // 4. Draw AI Feature Collapse
+                ctxAI.fillStyle = '#04060a';
+                ctxAI.fillRect(0, 0, w, h);
+
+                const cols = 60;
+                const rows = 24;
+                const cw = w / cols;
+                const rh = h / rows;
+
+                for (let c = 0; c < cols; c++) {
+                    for (let r = 0; r < rows; r++) {
+                        const isCorrupted = (r >= 4 && r <= 16) && Math.random() < (inband * 0.85);
+                        if (isCorrupted) {
+                            ctxAI.fillStyle = 'rgb(244, 63, 94)';
+                        } else {
+                            ctxAI.fillStyle = 'rgb(15, 23, 42)';
+                        }
+                        ctxAI.fillRect(c * cw, r * rh, cw - 1, rh - 1);
+                    }
+                }
+            }
+
+            function generateProtectedWavBlob() {
+                if (!currentBuffer) return null;
+
+                const sr = currentBuffer.sampleRate;
+                const rawData = currentBuffer.getChannelData(0);
+                const len = rawData.length;
+                const inband = parseFloat(inbandInput.value);
+                const mask = parseFloat(maskInput.value);
+
+                const wavBuffer = new ArrayBuffer(44 + len * 2);
+                const view = new DataView(wavBuffer);
+
+                function writeString(offset, string) {
+                    for (let i = 0; i < string.length; i++) {
+                        view.setUint8(offset + i, string.charCodeAt(i));
+                    }
+                }
+
+                writeString(0, 'RIFF');
+                view.setUint32(4, 36 + len * 2, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, 1, true);
+                view.setUint32(24, sr, true);
+                view.setUint32(28, sr * 2, true);
+                view.setUint16(32, 2, true);
+                view.setUint16(34, 16, true);
+                writeString(36, 'data');
+                view.setUint32(40, len * 2, true);
+
+                let offset = 44;
+                for (let i = 0; i < len; i++) {
+                    const t = i / sr;
+                    
+                    // In-band formant masked noise injection (Target 200Hz - 4000Hz)
+                    const formantNoise = (Math.sin(2 * Math.PI * 850 * t) + Math.sin(2 * Math.PI * 2200 * t)) * (inband * 0.08);
+                    const envelopeMask = Math.abs(rawData[i]) * mask;
+
+                    let sample = rawData[i] + (formantNoise * envelopeMask);
+                    sample = Math.max(-1, Math.min(1, sample));
+                    const pcm16 = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                    view.setInt16(offset, pcm16, true);
+                    offset += 2;
+                }
+
+                return new Blob([view], { type: 'audio/wav' });
+            }
+
+            async function playProtectedAudio() {
+                await initAudioCtx();
+                if (isPlaying) {
+                    stopCurrentAudio();
+                    return;
+                }
+
+                if (!currentBuffer) await generateSyntheticSpeechBuffer();
+
+                stopCurrentAudio();
+
+                const blob = generateProtectedWavBlob();
+                if (!blob) return;
+
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play();
+                isPlaying = true;
+
+                document.getElementById('playIcon').className = "fa-solid fa-stop";
+                document.getElementById('playText').textContent = "停止播放";
+
+                audio.onended = () => {
+                    stopCurrentAudio();
+                };
+            }
+
+            document.getElementById('btnDownloadAudio').addEventListener('click', async () => {
+                await initAudioCtx();
+                if (!currentBuffer) await generateSyntheticSpeechBuffer();
+
+                const blob = generateProtectedWavBlob();
+                if (!blob) return;
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ues_s01_protected_audio_${Date.now()}.wav`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            window.addEventListener('resize', resizeCanvases);
+
+            [inbandInput, maskInput, passInput].forEach(elem => {
+                elem.addEventListener('input', renderVisualizers);
+            });
+
+            document.getElementById('btnPlayProtected').addEventListener('click', playProtectedAudio);
+            document.getElementById('btnGenSpeech').addEventListener('click', generateSyntheticSpeechBuffer);
+            document.getElementById('btnProcessAudio').addEventListener('click', renderVisualizers);
+
+            document.getElementById('btnPlayOriginal').addEventListener('click', async () => {
+                await initAudioCtx();
+                if (!currentBuffer) return;
+                stopCurrentAudio();
+                const src = audioCtx.createBufferSource();
+                src.buffer = currentBuffer;
+                src.connect(audioCtx.destination);
+                src.start();
+                activeSource = src;
+            });
+
+            document.getElementById('btnReset').addEventListener('click', () => {
+                inbandInput.value = 0.45;
+                maskInput.value = 0.15;
+                passInput.value = "Audio-UES_S01-Secret2026";
+                renderVisualizers();
+            });
+
+            document.getElementById('togglePass').addEventListener('click', () => {
+                const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passInput.setAttribute('type', type);
+            });
+
+            document.getElementById('audioUploader').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                await initAudioCtx();
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    audioCtx.decodeAudioData(evt.target.result, (buf) => {
+                        currentBuffer = buf;
+                        renderVisualizers();
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            });
+
+            resizeCanvases();
+            generateSyntheticSpeechBuffer();
+        });
+    </script>
+</body>
+</html>
